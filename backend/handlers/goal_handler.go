@@ -16,7 +16,6 @@ type GoalHandler struct {
 	goalService *services.GoalService
 }
 
-
 func NewGoalHandler(goalService *services.GoalService) *GoalHandler {
 	return &GoalHandler{goalService: goalService}
 }
@@ -73,7 +72,7 @@ func (h *GoalHandler) GetGoalByID(c *gin.Context) {
 		return
 	}
 
-	goal, err := h.goalService.GetGoalByID(goalID, userID)
+	goal, err := h.goalService.GetGoalByID(goalID.String(), userID)
 	if err != nil {
 		if err.Error() == "unauthorized" {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Unauthorized"})
@@ -106,7 +105,7 @@ func (h *GoalHandler) UpdateGoal(c *gin.Context) {
 		return
 	}
 
-	goal, err := h.goalService.UpdateGoal(goalID, userID, &req)
+	goal, err := h.goalService.UpdateGoal(goalID.String(), userID, &req)
 	if err != nil {
 		if err.Error() == "unauthorized" {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Unauthorized"})
@@ -133,7 +132,7 @@ func (h *GoalHandler) DeleteGoal(c *gin.Context) {
 		return
 	}
 
-	err = h.goalService.DeleteGoal(goalID, userID)
+	err = h.goalService.DeleteGoal(goalID.String(), userID)
 	if err != nil {
 		if err.Error() == "unauthorized" {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Unauthorized"})
@@ -160,7 +159,7 @@ func (h *GoalHandler) ArchiveGoal(c *gin.Context) {
 		return
 	}
 
-	err = h.goalService.ArchiveGoal(goalID, userID)
+	err = h.goalService.ArchiveGoal(goalID.String(), userID)
 	if err != nil {
 		if err.Error() == "unauthorized" {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Unauthorized"})
@@ -187,7 +186,7 @@ func (h *GoalHandler) MarkComplete(c *gin.Context) {
 		return
 	}
 
-	err = h.goalService.MarkComplete(goalID, userID)
+	err = h.goalService.MarkComplete(goalID.String(), userID)
 	if err != nil {
 		if err.Error() == "unauthorized" {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Unauthorized"})
@@ -218,7 +217,7 @@ func (h *GoalHandler) GetCompletions(c *gin.Context) {
 		return
 	}
 
-	completions, err := h.goalService.GetCompletions(goalID, userID)
+	completions, err := h.goalService.GetCompletions(goalID.String(), userID)
 	if err != nil {
 		if err.Error() == "unauthorized" {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Unauthorized"})
@@ -245,7 +244,7 @@ func (h *GoalHandler) GetStreak(c *gin.Context) {
 		return
 	}
 
-	streak, err := h.goalService.GetStreak(goalID, userID)
+	streak, err := h.goalService.GetStreak(goalID.String(), userID)
 	if err != nil {
 		if err.Error() == "unauthorized" {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Unauthorized"})

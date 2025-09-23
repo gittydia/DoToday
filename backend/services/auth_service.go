@@ -15,8 +15,6 @@ import (
 	"DoToday/repositories"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthService struct {
@@ -28,6 +26,7 @@ func NewAuthService(userRepo *repositories.UserRepository) *AuthService {
 }
 
 func (s *AuthService) Register(req *models.RegisterRequest) (*models.AuthResponse, error) {
+	// ...existing code...
 	// Check if username or email already exists
 	_, err := s.userRepo.GetByUsername(req.Username)
 	if err == nil {
@@ -41,7 +40,7 @@ func (s *AuthService) Register(req *models.RegisterRequest) (*models.AuthRespons
 		UserMetadata map[string]interface{} `json:"user_metadata"`
 		Data         map[string]interface{} `json:"data"`
 	}
-	
+
 	type supabaseError struct {
 		Message string `json:"message"`
 		Code    int    `json:"code"`
@@ -85,7 +84,7 @@ func (s *AuthService) Register(req *models.RegisterRequest) (*models.AuthRespons
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
-	
+
 	reqHttp.Header.Set("apikey", sbKey)
 	reqHttp.Header.Set("Authorization", "Bearer "+sbKey)
 	reqHttp.Header.Set("Content-Type", "application/json")
@@ -103,8 +102,6 @@ func (s *AuthService) Register(req *models.RegisterRequest) (*models.AuthRespons
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
-
-
 
 	// Check for error responses first
 	if resp.StatusCode >= 400 {
@@ -130,89 +127,54 @@ func (s *AuthService) Register(req *models.RegisterRequest) (*models.AuthRespons
 			resp.StatusCode, string(body))
 	}
 
-	userID, err := uuid.Parse(sbResp.ID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid user ID format from Supabase: %w", err)
-	}
-
 	// Extract username from user metadata
 	username, ok := sbResp.UserMetadata["username"].(string)
 	if !ok || username == "" {
 		username = req.Username // fallback to request username if not in metadata
 	}
 
-	// Hash password for local storage
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return nil, err
-	}
-
-	// Parse creation time
-	var createdAt time.Time
-	if sbResp.CreatedAt != "" {
-		createdAt, err = time.Parse(time.RFC3339, sbResp.CreatedAt)
-		if err != nil {
-			createdAt = time.Now()
-		}
-	} else {
-		createdAt = time.Now()
-	}
-
-	user := &models.User{
-		ID:        userID,
+	profile := &models.Profile{
+		ID:        sbResp.ID,
 		Username:  username,
 		Email:     sbResp.Email,
-		Password:  string(hashedPassword),
-		CreatedAt: createdAt,
+		CreatedAt: time.Now(),
 	}
-
-	if err := s.userRepo.Create(user); err != nil {
+	if err := s.userRepo.Create(profile); err != nil {
 		return nil, fmt.Errorf("failed to insert profile: %w", err)
 	}
-
-	// Generate JWT token
-	token, err := s.generateJWT(user.ID)
+	token, err := s.generateJWT(profile.ID)
 	if err != nil {
 		return nil, err
 	}
-
-	user.Password = ""
 	return &models.AuthResponse{
-		User:  *user,
+		User:  *profile,
 		Token: token,
 	}, nil
 }
 
+// Login should be handled by Supabase Auth. This is a placeholder for local/dev only.
 func (s *AuthService) Login(req *models.LoginRequest) (*models.AuthResponse, error) {
-	// Get user by username
-	user, err := s.userRepo.GetByUsername(req.Username)
+	profile, err := s.userRepo.GetByUsername(req.Username)
 	if err != nil {
 		return nil, errors.New("invalid credentials")
 	}
 
-	// Check password
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		return nil, errors.New("invalid credentials")
-	}
-
-	// Generate JWT token
-	token, err := s.generateJWT(user.ID)
+	// In production, validate password via Supabase Auth, not locally.
+	// Here, we just return the profile and a JWT for dev/testing.
+	token, err := s.generateJWT(profile.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Remove password from response
-	user.Password = ""
-
 	return &models.AuthResponse{
-		User:  *user,
+		User:  *profile,
 		Token: token,
 	}, nil
 }
 
-func (s *AuthService) generateJWT(userID uuid.UUID) (string, error) {
+func (s *AuthService) generateJWT(userID string) (string, error) {
 	claims := &jwt.RegisteredClaims{
-		Subject:   userID.String(),
+		Subject:   userID,
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
 	}

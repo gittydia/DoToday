@@ -3,8 +3,6 @@ package repositories
 import (
 	"DoToday/models"
 	"database/sql"
-
-	"github.com/google/uuid"
 )
 
 type GoalRepository struct {
@@ -17,26 +15,26 @@ func NewGoalRepository(db *sql.DB) *GoalRepository {
 
 func (r *GoalRepository) Create(goal *models.Goal) error {
 	query := `
-		INSERT INTO goals (id, user_id, title, description, deadline, is_public, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-	`
+	       INSERT INTO goals (id, user_id, title, category, description, frequency, target_count, deadline, is_public, current_streak, archived, created_at)
+	       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       `
 	_, err := r.db.Exec(query,
-		goal.ID, goal.UserID, goal.Title, goal.Description,
-		goal.Deadline, goal.IsPublic, goal.CreatedAt,
+		goal.ID, goal.UserID, goal.Title, goal.Category, goal.Description, goal.Frequency, goal.TargetCount,
+		goal.Deadline, goal.IsPublic, goal.CurrentStreak, goal.Archived, goal.CreatedAt,
 	)
 	return err
 }
 
-func (r *GoalRepository) GetByID(id uuid.UUID) (*models.Goal, error) {
+func (r *GoalRepository) GetByID(id string) (*models.Goal, error) {
 	goal := &models.Goal{}
 	query := `
-		SELECT id, user_id, title, description, deadline, is_public, current_streak, archived, created_at
-		FROM goals
-		WHERE id = $1
-	`
+	       SELECT id, user_id, title, category, description, frequency, target_count, deadline, is_public, current_streak, archived, created_at
+	       FROM goals
+	       WHERE id = $1
+       `
 	err := r.db.QueryRow(query, id).Scan(
-		&goal.ID, &goal.UserID, &goal.Title, &goal.Description, &goal.Deadline,
-		&goal.IsPublic, &goal.CurrentStreak, &goal.Archived, &goal.CreatedAt,
+		&goal.ID, &goal.UserID, &goal.Title, &goal.Category, &goal.Description, &goal.Frequency, &goal.TargetCount,
+		&goal.Deadline, &goal.IsPublic, &goal.CurrentStreak, &goal.Archived, &goal.CreatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -44,13 +42,13 @@ func (r *GoalRepository) GetByID(id uuid.UUID) (*models.Goal, error) {
 	return goal, nil
 }
 
-func (r *GoalRepository) GetByUserID(userID uuid.UUID) ([]*models.Goal, error) {
+func (r *GoalRepository) GetByUserID(userID string) ([]*models.Goal, error) {
 	query := `
-		SELECT id, user_id, title, description, deadline, is_public, current_streak, archived, created_at
-		FROM goals
-		WHERE user_id = $1 AND archived = false
-		ORDER BY created_at DESC
-	`
+	       SELECT id, user_id, title, category, description, frequency, target_count, deadline, is_public, current_streak, archived, created_at
+	       FROM goals
+	       WHERE user_id = $1 AND archived = false
+	       ORDER BY created_at DESC
+       `
 	rows, err := r.db.Query(query, userID)
 	if err != nil {
 		return nil, err
@@ -61,8 +59,8 @@ func (r *GoalRepository) GetByUserID(userID uuid.UUID) ([]*models.Goal, error) {
 	for rows.Next() {
 		goal := &models.Goal{}
 		err := rows.Scan(
-			&goal.ID, &goal.UserID, &goal.Title, &goal.Description, &goal.Deadline,
-			&goal.IsPublic, &goal.CurrentStreak, &goal.Archived, &goal.CreatedAt,
+			&goal.ID, &goal.UserID, &goal.Title, &goal.Category, &goal.Description, &goal.Frequency, &goal.TargetCount,
+			&goal.Deadline, &goal.IsPublic, &goal.CurrentStreak, &goal.Archived, &goal.CreatedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -92,8 +90,8 @@ func (r *GoalRepository) GetPublicGoals(limit int) ([]*models.Goal, error) {
 	for rows.Next() {
 		goal := &models.Goal{}
 		err := rows.Scan(
-			&goal.ID, &goal.UserID, &goal.Title, &goal.Description, &goal.Deadline,
-			&goal.IsPublic, &goal.CurrentStreak, &goal.Archived, &goal.CreatedAt, &goal.Username,
+			&goal.ID, &goal.UserID, &goal.Title, &goal.Category, &goal.Description, &goal.Frequency, &goal.TargetCount,
+			&goal.Deadline, &goal.IsPublic, &goal.CurrentStreak, &goal.Archived, &goal.CreatedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -115,25 +113,25 @@ func (r *GoalRepository) Update(goal *models.Goal) error {
 	return err
 }
 
-func (r *GoalRepository) Delete(id, userID uuid.UUID) error {
+func (r *GoalRepository) Delete(id, userID string) error {
 	query := `DELETE FROM goals WHERE id = $1 AND user_id = $2`
 	_, err := r.db.Exec(query, id, userID)
 	return err
 }
 
-func (r *GoalRepository) Archive(id, userID uuid.UUID) error {
+func (r *GoalRepository) Archive(id, userID string) error {
 	query := `UPDATE goals SET archived = true WHERE id = $1 AND user_id = $2`
 	_, err := r.db.Exec(query, id, userID)
 	return err
 }
 
-func (r *GoalRepository) UpdateStreak(goalID uuid.UUID, streak int) error {
+func (r *GoalRepository) UpdateStreak(goalID string, streak int) error {
 	query := `UPDATE goals SET current_streak = $1 WHERE id = $2`
 	_, err := r.db.Exec(query, streak, goalID)
 	return err
 }
 
-func (r *GoalRepository) GetLongestStreak(goalID uuid.UUID) (int, error) {
+func (r *GoalRepository) GetLongestStreak(goalID string) (int, error) {
 	var streak int
 	query := `SELECT calculate_longest_streak($1)`
 	err := r.db.QueryRow(query, goalID).Scan(&streak)

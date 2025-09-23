@@ -38,6 +38,6 @@ func InitDB() (*sql.DB, error) {
 		return nil, fmt.Errorf("error connecting to database: %w", err)
 	}
 
-	fmt.Println("Successfully connected to database!")
+	fmt.Println("Successfully connected to database and ensured schema!")
 	return db, nil
 }

@@ -16,53 +16,53 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 	return &UserRepository{db: db}
 }
 
-func (r *UserRepository) Create(user *models.User) error {
+func (r *UserRepository) Create(profile *models.Profile) error {
 	query := `
-		INSERT INTO profiles (id, username, email, password, created_at)
-		VALUES ($1, $2, $3, $4, $5)
-	`
-	_, err := r.db.Exec(query, user.ID, user.Username, user.Email, user.Password, user.CreatedAt)
+	       INSERT INTO profiles (id, username, email, created_at)
+	       VALUES ($1, $2, $3, $4)
+       `
+	_, err := r.db.Exec(query, profile.ID, profile.Username, profile.Email, profile.CreatedAt)
 	return err
 }
 
-func (r *UserRepository) GetByID(id uuid.UUID) (*models.User, error) {
-	user := &models.User{}
+func (r *UserRepository) GetByID(id string) (*models.Profile, error) {
+	profile := &models.Profile{}
 	query := `
-		SELECT id, username, email, password, created_at
-		FROM profiles
-		WHERE id = $1
-	`
+	       SELECT id, username, email, created_at
+	       FROM profiles
+	       WHERE id = $1
+       `
 	err := r.db.QueryRow(query, id).Scan(
-		&user.ID, &user.Username, &user.Email, &user.Password, &user.CreatedAt,
+		&profile.ID, &profile.Username, &profile.Email, &profile.CreatedAt,
 	)
 	if err != nil {
 		return nil, err
 	}
-	return user, nil
+	return profile, nil
 }
 
-func (r *UserRepository) GetByUsername(username string) (*models.User, error) {
-	user := &models.User{}
+func (r *UserRepository) GetByUsername(username string) (*models.Profile, error) {
+	profile := &models.Profile{}
 	query := `
-		SELECT id, username, email, password, created_at
-		FROM profiles
-		WHERE username = $1
-	`
+	       SELECT id, username, email, created_at
+	       FROM profiles
+	       WHERE username = $1
+       `
 	err := r.db.QueryRow(query, username).Scan(
-		&user.ID, &user.Username, &user.Email, &user.Password, &user.CreatedAt,
+		&profile.ID, &profile.Username, &profile.Email, &profile.CreatedAt,
 	)
 	if err != nil {
 		return nil, err
 	}
-	return user, nil
+	return profile, nil
 }
 
-func (r *UserRepository) UpdateUsername(id uuid.UUID, username string) error {
+func (r *UserRepository) UpdateUsername(id string, username string) error {
 	query := `
-		UPDATE profiles
-		SET username = $1
-		WHERE id = $2
-	`
+	       UPDATE profiles
+	       SET username = $1
+	       WHERE id = $2
+       `
 	_, err := r.db.Exec(query, username, id)
 	return err
 }

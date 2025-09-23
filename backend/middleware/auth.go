@@ -7,11 +7,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 )
 
 type Claims struct {
-	UserID uuid.UUID `json:"user_id"`
+	UserID string `json:"user_id"`
 	jwt.RegisteredClaims
 }
 
@@ -47,12 +46,11 @@ func AuthMiddleware() gin.HandlerFunc {
 	}
 }
 
-func GetUserID(c *gin.Context) (uuid.UUID, bool) {
+func GetUserID(c *gin.Context) (string, bool) {
 	userID, exists := c.Get("user_id")
 	if !exists {
-		return uuid.Nil, false
+		return "", false
 	}
-
-	id, ok := userID.(uuid.UUID)
+	id, ok := userID.(string)
 	return id, ok
 }

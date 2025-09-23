@@ -19,26 +19,23 @@ func NewUserService(userRepo *repositories.UserRepository) *UserService {
 	return &UserService{userRepo: userRepo}
 }
 
-func (s *UserService) GetProfile(userID uuid.UUID) (*models.User, error) {
-	user, err := s.userRepo.GetByID(userID)
+func (s *UserService) GetProfile(userID string) (*models.Profile, error) {
+	profile, err := s.userRepo.GetByID(userID)
 	if err != nil {
 		return nil, err
 	}
-
-	// Remove password from response
-	user.Password = ""
-	return user, nil
+	return profile, nil
 }
 
-func (s *UserService) UpdateProfile(userID uuid.UUID, req *models.UpdateProfileRequest) (*models.User, error) {
-	// Get current user
-	user, err := s.userRepo.GetByID(userID)
+func (s *UserService) UpdateProfile(userID string, req *models.UpdateProfileRequest) (*models.Profile, error) {
+	// Get current profile
+	profile, err := s.userRepo.GetByID(userID)
 	if err != nil {
 		return nil, err
 	}
 
 	// Update username if provided
-	if req.Username != nil && *req.Username != user.Username {
+	if req.Username != nil && *req.Username != profile.Username {
 		// Check if username is already taken
 		_, err := s.userRepo.GetByUsername(*req.Username)
 		if err == nil {
@@ -50,12 +47,10 @@ func (s *UserService) UpdateProfile(userID uuid.UUID, req *models.UpdateProfileR
 		if err := s.userRepo.UpdateUsername(userID, *req.Username); err != nil {
 			return nil, err
 		}
-		user.Username = *req.Username
+		profile.Username = *req.Username
 	}
 
-	// Remove password from response
-	user.Password = ""
-	return user, nil
+	return profile, nil
 }
 
 func (s *UserService) GetUserStats(userID uuid.UUID) (*models.UserStats, error) {

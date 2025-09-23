@@ -23,15 +23,20 @@ func NewGoalService(goalRepo *repositories.GoalRepository, completionRepo *repos
 	}
 }
 
-func (s *GoalService) CreateGoal(userID uuid.UUID, req *models.CreateGoalRequest) (*models.Goal, error) {
+func (s *GoalService) CreateGoal(userID string, req *models.CreateGoalRequest) (*models.Goal, error) {
 	goal := &models.Goal{
-		ID:          uuid.New(),
-		UserID:      userID,
-		Title:       req.Title,
-		Description: req.Description,
-		Deadline:    req.Deadline,
-		IsPublic:    req.IsPublic,
-		CreatedAt:   time.Now(),
+		ID:            uuid.NewString(),
+		UserID:        userID,
+		Title:         req.Title,
+		Category:      req.Category,
+		Description:   req.Description,
+		Frequency:     req.Frequency,
+		TargetCount:   req.TargetCount,
+		Deadline:      &req.Deadline,
+		IsPublic:      req.IsPublic,
+		CurrentStreak: 0,
+		Archived:      false,
+		CreatedAt:     time.Now(),
 	}
 
 	if err := s.goalRepo.Create(goal); err != nil {
@@ -41,11 +46,11 @@ func (s *GoalService) CreateGoal(userID uuid.UUID, req *models.CreateGoalRequest
 	return goal, nil
 }
 
-func (s *GoalService) GetUserGoals(userID uuid.UUID) ([]*models.Goal, error) {
+func (s *GoalService) GetUserGoals(userID string) ([]*models.Goal, error) {
 	return s.goalRepo.GetByUserID(userID)
 }
 
-func (s *GoalService) GetGoalByID(goalID, userID uuid.UUID) (*models.Goal, error) {
+func (s *GoalService) GetGoalByID(goalID, userID string) (*models.Goal, error) {
 	goal, err := s.goalRepo.GetByID(goalID)
 	if err != nil {
 		return nil, err
@@ -59,7 +64,7 @@ func (s *GoalService) GetGoalByID(goalID, userID uuid.UUID) (*models.Goal, error
 	return goal, nil
 }
 
-func (s *GoalService) UpdateGoal(goalID, userID uuid.UUID, req *models.UpdateGoalRequest) (*models.Goal, error) {
+func (s *GoalService) UpdateGoal(goalID, userID string, req *models.UpdateGoalRequest) (*models.Goal, error) {
 	goal, err := s.goalRepo.GetByID(goalID)
 	if err != nil {
 		return nil, err
@@ -77,10 +82,13 @@ func (s *GoalService) UpdateGoal(goalID, userID uuid.UUID, req *models.UpdateGoa
 		goal.Description = *req.Description
 	}
 	if req.Deadline != nil {
-		goal.Deadline = *req.Deadline
+		goal.Deadline = req.Deadline
 	}
 	if req.IsPublic != nil {
 		goal.IsPublic = *req.IsPublic
+	}
+	if req.Archived != nil {
+		goal.Archived = *req.Archived
 	}
 
 	if err := s.goalRepo.Update(goal); err != nil {
@@ -90,7 +98,7 @@ func (s *GoalService) UpdateGoal(goalID, userID uuid.UUID, req *models.UpdateGoa
 	return goal, nil
 }
 
-func (s *GoalService) DeleteGoal(goalID, userID uuid.UUID) error {
+func (s *GoalService) DeleteGoal(goalID, userID string) error {
 	goal, err := s.goalRepo.GetByID(goalID)
 	if err != nil {
 		return err
@@ -103,7 +111,7 @@ func (s *GoalService) DeleteGoal(goalID, userID uuid.UUID) error {
 	return s.goalRepo.Delete(goalID, userID)
 }
 
-func (s *GoalService) ArchiveGoal(goalID, userID uuid.UUID) error {
+func (s *GoalService) ArchiveGoal(goalID, userID string) error {
 	goal, err := s.goalRepo.GetByID(goalID)
 	if err != nil {
 		return err
@@ -116,7 +124,7 @@ func (s *GoalService) ArchiveGoal(goalID, userID uuid.UUID) error {
 	return s.goalRepo.Archive(goalID, userID)
 }
 
-func (s *GoalService) MarkComplete(goalID, userID uuid.UUID) error {
+func (s *GoalService) MarkComplete(goalID, userID string) error {
 	goal, err := s.goalRepo.GetByID(goalID)
 	if err != nil {
 		return err
@@ -140,9 +148,10 @@ func (s *GoalService) MarkComplete(goalID, userID uuid.UUID) error {
 
 	// Create completion
 	completion := &models.Completion{
-		ID:        uuid.New(),
+		ID:        uuid.NewString(),
 		GoalID:    goalID,
 		Date:      today,
+		Count:     1,
 		CreatedAt: time.Now(),
 	}
 
@@ -159,7 +168,7 @@ func (s *GoalService) MarkComplete(goalID, userID uuid.UUID) error {
 	return s.goalRepo.UpdateStreak(goalID, streak)
 }
 
-func (s *GoalService) GetCompletions(goalID, userID uuid.UUID) ([]*models.Completion, error) {
+func (s *GoalService) GetCompletions(goalID, userID string) ([]*models.Completion, error) {
 	goal, err := s.goalRepo.GetByID(goalID)
 	if err != nil {
 		return nil, err
@@ -172,7 +181,7 @@ func (s *GoalService) GetCompletions(goalID, userID uuid.UUID) ([]*models.Comple
 	return s.completionRepo.GetByGoalID(goalID)
 }
 
-func (s *GoalService) GetStreak(goalID, userID uuid.UUID) (*models.StreakResponse, error) {
+func (s *GoalService) GetStreak(goalID, userID string) (*models.StreakResponse, error) {
 	goal, err := s.goalRepo.GetByID(goalID)
 	if err != nil {
 		return nil, err

@@ -63,8 +63,9 @@ func setupRouter(authHandler *handlers.AuthHandler, goalHandler *handlers.GoalHa
 
 	// CORS middleware
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:3000", "http://localhost:5173"} // Add your frontend URLs
+	config.AllowOrigins = []string{"http://localhost:3000", "http://localhost:5173"} //frontend dev ports
 	config.AllowCredentials = true
+	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"}
 	router.Use(cors.New(config))
 
@@ -72,8 +73,6 @@ func setupRouter(authHandler *handlers.AuthHandler, goalHandler *handlers.GoalHa
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
-
-
 
 
 	// Public routes

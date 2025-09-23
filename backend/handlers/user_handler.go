@@ -9,6 +9,7 @@ import (
 	"DoToday/services"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type UserHandler struct {
@@ -67,8 +68,13 @@ func (h *UserHandler) GetUserStats(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
-
-	stats, err := h.userService.GetUserStats(userID)
+	// Convert userID string to uuid.UUID
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+	stats, err := h.userService.GetUserStats(uid)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
