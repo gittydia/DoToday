@@ -24,6 +24,11 @@ func NewGoalService(goalRepo *repositories.GoalRepository, completionRepo *repos
 }
 
 func (s *GoalService) CreateGoal(userID string, req *models.CreateGoalRequest) (*models.Goal, error) {
+	// Always set TargetCount to at least 1
+	targetCount := req.TargetCount
+	if targetCount < 1 {
+		targetCount = 1
+	}
 	goal := &models.Goal{
 		ID:            uuid.NewString(),
 		UserID:        userID,
@@ -31,7 +36,7 @@ func (s *GoalService) CreateGoal(userID string, req *models.CreateGoalRequest) (
 		Category:      req.Category,
 		Description:   req.Description,
 		Frequency:     req.Frequency,
-		TargetCount:   req.TargetCount,
+		TargetCount:   targetCount,
 		Deadline:      &req.Deadline,
 		IsPublic:      req.IsPublic,
 		CurrentStreak: 0,
@@ -47,7 +52,23 @@ func (s *GoalService) CreateGoal(userID string, req *models.CreateGoalRequest) (
 }
 
 func (s *GoalService) GetUserGoals(userID string) ([]*models.Goal, error) {
-	return s.goalRepo.GetByUserID(userID)
+	goals, err := s.goalRepo.GetByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+	for _, goal := range goals {
+		// Always set targetCount to at least 1 for frontend
+		if goal.TargetCount < 1 {
+			goal.TargetCount = 1
+		}
+		completions, err := s.completionRepo.GetByGoalID(goal.ID)
+		if err != nil {
+			goal.Completions = []*models.Completion{}
+		} else {
+			goal.Completions = completions
+		}
+	}
+	return goals, nil
 }
 
 func (s *GoalService) GetGoalByID(goalID, userID string) (*models.Goal, error) {
