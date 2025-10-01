@@ -106,7 +106,7 @@ func setupRouter(
 	}
 
 	// Protected routes
-	protected := api.Group("/api")
+	protected := api
 	protected.Use(middleware.AuthMiddleware())
 	{
 		// User routes
