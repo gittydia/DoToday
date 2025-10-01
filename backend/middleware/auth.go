@@ -41,7 +41,17 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		c.Set("user_id", claims.UserID)
+		// Support both 'user_id' and 'sub' as user ID sources
+		userID := claims.UserID
+		if userID == "" && claims.Subject != "" {
+			userID = claims.Subject
+		}
+		if userID == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in token"})
+			c.Abort()
+			return
+		}
+		c.Set("user_id", userID)
 		c.Next()
 	}
 }
