@@ -14,18 +14,19 @@ type Profile struct {
 
 // goals
 type Goal struct {
-	ID            string     `json:"id" gorm:"primaryKey;default:gen_random_uuid()"`
-	UserID        string     `json:"user_id" gorm:"not null"`
-	Title         string     `json:"title" gorm:"not null"`
-	Category      string     `json:"category" gorm:"not null"`
-	Description   string     `json:"description"`
-	Frequency     string     `json:"frequency" gorm:"default:'daily'"`
-	TargetCount   int        `json:"target_count" gorm:"default:1"`
-	Deadline      *time.Time `json:"deadline"`
-	IsPublic      bool       `json:"is_public" gorm:"default:false"`
-	CurrentStreak int        `json:"current_streak" gorm:"default:0"`
-	Archived      bool       `json:"archived" gorm:"default:false"`
-	CreatedAt     time.Time  `json:"created_at"`
+	ID            string        `json:"id" gorm:"primaryKey;default:gen_random_uuid()"`
+	UserID        string        `json:"user_id" gorm:"not null"`
+	Title         string        `json:"title" gorm:"not null"`
+	Category      string        `json:"category" gorm:"not null"`
+	Description   string        `json:"description"`
+	Frequency     string        `json:"frequency" gorm:"default:'daily'"`
+	TargetCount   int           `json:"target_count" gorm:"default:1"`
+	Deadline      *time.Time    `json:"deadline"`
+	IsPublic      bool          `json:"is_public" gorm:"default:false"`
+	CurrentStreak int           `json:"current_streak" gorm:"default:0"`
+	Archived      bool          `json:"archived" gorm:"default:false"`
+	CreatedAt     time.Time     `json:"created_at"`
+	Completions   []*Completion `json:"completions" gorm:"-"`
 }
 
 // completions
