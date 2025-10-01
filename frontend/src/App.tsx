@@ -7,11 +7,12 @@ import { Social } from "./components/Social";
 import { Profile } from "./components/Profile";
 import { GoalForm } from "./components/GoalForm";
 import { Goal } from "./components/GoalCard";
+import * as api from "./lib/api";
 
 interface User {
   name: string;
   email: string;
-  avatar?: string;
+  token?: string;
 }
 
 export default function App() {
@@ -24,7 +25,6 @@ export default function App() {
   const [currentView, setCurrentView] = useState<'dashboard' | 'analytics' | 'social' | 'profile'>('dashboard');
   const [viewingProfile, setViewingProfile] = useState<string | null>(null);
 
-  // Initialize with demo data
   useEffect(() => {
     // Check for saved theme
     const savedTheme = localStorage.getItem('darkMode');
@@ -35,158 +35,94 @@ export default function App() {
         document.documentElement.classList.add('dark');
       }
     }
-
-    // Demo data with more historical completions for better analytics
-    const generateDemoCompletions = () => {
-      const completions = [];
-      const today = new Date();
-      
-      // Generate 3 months of random completion data
-      for (let i = 0; i < 90; i++) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
-        const dateStr = date.toISOString().split('T')[0];
-        
-        // Random completion with higher probability for recent dates
-        const probability = Math.max(0.3, 1 - (i / 90));
-        if (Math.random() < probability) {
-          completions.push({ date: dateStr, count: 1 });
-        }
-      }
-      
-      return completions;
-    };
-
-    const generateWaterCompletions = () => {
-      const completions = [];
-      const today = new Date();
-      
-      for (let i = 0; i < 90; i++) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
-        const dateStr = date.toISOString().split('T')[0];
-        
-        // Random water intake between 4-8 glasses
-        const glasses = Math.floor(Math.random() * 5) + 4;
-        if (Math.random() < 0.8) { // 80% chance of tracking
-          completions.push({ date: dateStr, count: glasses });
-        }
-      }
-      
-      return completions;
-    };
-
-    const demoGoals: Goal[] = [
-      {
-        id: '1',
-        title: 'Drink 8 glasses of water',
-        description: 'Stay hydrated throughout the day',
-        category: 'health',
-        frequency: 'daily',
-        targetCount: 8,
-        completions: generateWaterCompletions(),
-        createdAt: new Date(Date.now() - 86400000 * 30).toISOString()
-      },
-      {
-        id: '2',
-        title: 'Read for 30 minutes',
-        description: 'Read books or articles to expand knowledge',
-        category: 'learning',
-        frequency: 'daily',
-        targetCount: 1,
-        completions: generateDemoCompletions(),
-        createdAt: new Date(Date.now() - 86400000 * 45).toISOString()
-      },
-      {
-        id: '3',
-        title: 'Exercise',
-        description: 'Any form of physical activity for at least 30 minutes',
-        category: 'health',
-        frequency: 'daily',
-        targetCount: 1,
-        completions: generateDemoCompletions(),
-        createdAt: new Date(Date.now() - 86400000 * 60).toISOString()
-      },
-      {
-        id: '4',
-        title: 'Meditate',
-        description: 'Practice mindfulness and meditation',
-        category: 'personal',
-        frequency: 'daily',
-        targetCount: 1,
-        completions: generateDemoCompletions(),
-        createdAt: new Date(Date.now() - 86400000 * 20).toISOString()
-      },
-      {
-        id: '5',
-        title: 'Learn new skill',
-        description: 'Spend time learning programming or other skills',
-        category: 'work',
-        frequency: 'daily',
-        targetCount: 1,
-        completions: generateDemoCompletions(),
-        createdAt: new Date(Date.now() - 86400000 * 35).toISOString()
-      }
-    ];
-    setGoals(demoGoals);
+    // Try to restore user from localStorage
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
   }, []);
 
-  const toggleDarkMode = () => {
-    const newDarkMode = !darkMode;
-    setDarkMode(newDarkMode);
-    localStorage.setItem('darkMode', JSON.stringify(newDarkMode));
-    
-    if (newDarkMode) {
-      document.documentElement.classList.add('dark');
+  useEffect(() => {
+    if (user && user.token) {
+      fetchGoals(user.token);
     } else {
-      document.documentElement.classList.remove('dark');
+      setGoals([]);
+    }
+  }, [user]);
+
+  const fetchGoals = async (token: string) => {
+    try {
+      const data = await api.getGoals(token);
+      const goalsArray = Array.isArray(data) ? data : data.goals || [];
+      setGoals(goalsArray.map((goal: any) => ({
+        ...goal,
+        targetCount: goal.target_count ?? 1,
+        completions: Array.isArray(goal.completions)
+          ? goal.completions.map((c: { date: string; count: number }) => ({
+              ...c,
+              date: c.date ? new Date(c.date).toISOString().split('T')[0] : ''
+            }))
+          : []
+      })));
+    } catch (err) {
+      setGoals([]);
     }
   };
 
-  const handleLogin = (email: string, password: string) => {
-    // Mock login - in real app this would call an API
-    setUser({
-      name: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
-      email,
-      avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${email}`
-    });
-    setShowAuthModal(false);
+  const handleLogin = async (username: string, password: string) => {
+    try {
+      const res = await api.login({ username, password });
+      if (res.token) {
+        const userObj = { name: res.username || username, email: username, token: res.token };
+        setUser(userObj);
+        localStorage.setItem('user', JSON.stringify(userObj));
+        setShowAuthModal(false);
+      } else {
+        alert(res.message || 'Login failed');
+      }
+    } catch (err) {
+      alert('Login error');
+    }
   };
 
-  const handleRegister = (name: string, email: string, password: string) => {
-    // Mock registration - in real app this would call an API
-    setUser({
-      name,
-      email,
-      avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${email}`
-    });
-    setShowAuthModal(false);
+  const handleRegister = async (name: string, email: string, password: string) => {
+    try {
+      const res = await api.register({ username: name, email, password });
+      if (res.token) {
+        const userObj = { name, email, token: res.token };
+        setUser(userObj);
+        localStorage.setItem('user', JSON.stringify(userObj));
+        setShowAuthModal(false);
+      } else {
+        alert(res.message || 'Registration failed');
+      }
+    } catch (err) {
+      alert('Registration error');
+    }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (user && user.token) {
+      await api.logout(user.token);
+    }
     setUser(null);
+    localStorage.removeItem('user');
   };
 
-  const handleSaveGoal = (goalData: Omit<Goal, 'id' | 'completions' | 'createdAt'>) => {
-    if (editingGoal) {
-      // Update existing goal
-      setGoals(goals.map(goal => 
-        goal.id === editingGoal.id 
-          ? { ...goal, ...goalData }
-          : goal
-      ));
+  const handleSaveGoal = async (goalData: Omit<Goal, 'id' | 'completions' | 'createdAt'>) => {
+    if (!user || !user.token) return;
+    try {
+      if (editingGoal) {
+        await api.updateGoal(editingGoal.id, goalData, user.token);
+      } else {
+        await api.createGoal(goalData, user.token);
+      }
+      await fetchGoals(user.token);
       setEditingGoal(null);
-    } else {
-      // Create new goal
-      const newGoal: Goal = {
-        ...goalData,
-        id: Date.now().toString(),
-        completions: [],
-        createdAt: new Date().toISOString()
-      };
-      setGoals([...goals, newGoal]);
+      setShowGoalForm(false);
+    } catch (err) {
+      alert('Failed to save goal');
     }
-    setShowGoalForm(false);
   };
 
   const handleEditGoal = (goal: Goal) => {
@@ -194,33 +130,24 @@ export default function App() {
     setShowGoalForm(true);
   };
 
-  const handleDeleteGoal = (goalId: string) => {
-    setGoals(goals.filter(goal => goal.id !== goalId));
+  const handleDeleteGoal = async (goalId: string) => {
+    if (!user || !user.token) return;
+    try {
+      await api.deleteGoal(goalId, user.token);
+      await fetchGoals(user.token);
+    } catch (err) {
+      alert('Failed to delete goal');
+    }
   };
 
-  const handleToggleCompletion = (goalId: string, date: string) => {
-    setGoals(goals.map(goal => {
-      if (goal.id === goalId) {
-        const existingCompletion = goal.completions.find(c => c.date === date);
-        if (existingCompletion) {
-          // Toggle completion
-          const newCount = existingCompletion.count >= goal.targetCount ? 0 : goal.targetCount;
-          return {
-            ...goal,
-            completions: goal.completions.map(c => 
-              c.date === date ? { ...c, count: newCount } : c
-            )
-          };
-        } else {
-          // Add new completion
-          return {
-            ...goal,
-            completions: [...goal.completions, { date, count: goal.targetCount }]
-          };
-        }
-      }
-      return goal;
-    }));
+  const handleToggleCompletion = async (goalId: string, date: string) => {
+    if (!user || !user.token) return;
+    try {
+      await api.completeGoal(goalId, user.token);
+      await fetchGoals(user.token);
+    } catch (err) {
+      alert('Failed to complete goal');
+    }
   };
 
   const handleNewGoal = () => {
@@ -235,7 +162,6 @@ export default function App() {
 
   const renderCurrentView = () => {
     if (!user) return null;
-
     switch (currentView) {
       case 'dashboard':
         return (
@@ -270,10 +196,21 @@ export default function App() {
     }
   };
 
+  const toggleDarkMode = () => {
+    const newDarkMode = !darkMode;
+    setDarkMode(newDarkMode);
+    localStorage.setItem('darkMode', JSON.stringify(newDarkMode));
+    if (newDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header
-        user={user}
+        user={user ?? undefined}
         onLogin={() => setShowAuthModal(true)}
         onLogout={handleLogout}
         onNewGoal={handleNewGoal}
@@ -282,7 +219,6 @@ export default function App() {
         currentView={currentView}
         onViewChange={setCurrentView}
       />
-
       <main>
         {user ? (
           renderCurrentView()
@@ -290,12 +226,11 @@ export default function App() {
           <div className="container mx-auto px-4 py-16">
             <div className="max-w-3xl mx-auto text-center space-y-8">
               <div className="space-y-4">
-                <h1 className="text-4xl font-bold tracking-tight">Welcome to DoToday</h1>
+                <h1 className="text-4xl font-bold tracking-tight">Welcome to Do Today</h1>
                 <p className="text-xl text-muted-foreground">
-                  Set, track, and achieve your daily goals with a simple, GitHub-inspired interface.
+                  Set and track your daily, monthly, and yearly goals with ease. Stay motivated and achieve more every day!
                 </p>
               </div>
-              
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
                 <div className="p-6 border rounded-lg">
                   <h3 className="font-semibold mb-2">Set Goals</h3>
@@ -316,7 +251,6 @@ export default function App() {
                   </p>
                 </div>
               </div>
-              
               <div className="pt-4">
                 <button 
                   onClick={() => setShowAuthModal(true)}
@@ -329,14 +263,12 @@ export default function App() {
           </div>
         )}
       </main>
-
       <AuthModal
         open={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         onLogin={handleLogin}
         onRegister={handleRegister}
       />
-
       <GoalForm
         open={showGoalForm}
         onClose={() => {
