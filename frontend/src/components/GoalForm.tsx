@@ -6,6 +6,7 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import type { Goal } from "./GoalCard";
+import { Target } from "lucide-react";
 
 interface GoalFormProps {
   open: boolean;
@@ -45,7 +46,9 @@ export function GoalForm({ open, onClose, onSave, editingGoal }: GoalFormProps) 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(form);
+    // Always submit at least 1 for targetCount
+    const safeForm = { ...form, targetCount: form.targetCount > 0 ? form.targetCount : 1 };
+    onSave(safeForm);
     setForm({
       title: "",
       description: "",
@@ -127,8 +130,14 @@ export function GoalForm({ open, onClose, onSave, editingGoal }: GoalFormProps) 
               id="target"
               type="number"
               min="1"
-              value={form.targetCount}
-              onChange={(e) => setForm({ ...form, targetCount: parseInt(e.target.value)})}
+              value={form.targetCount === 0 ? '' : form.targetCount}
+              onChange={(e) => {
+                const val = e.target.value;
+                setForm({
+                  ...form,
+                  targetCount: val === '' ? 0 : Math.max(1, parseInt(val) || 1)
+                });
+              }}
               required
             />
             <p className="text-xs text-muted-foreground">

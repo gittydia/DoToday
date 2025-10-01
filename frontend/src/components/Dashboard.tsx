@@ -19,12 +19,13 @@ export function Dashboard({ goals, onEditGoal, onDeleteGoal, onToggleCompletion,
   
   // Calculate stats
   const totalGoals = goals.length;
-  const todayCompleted = goals.filter(goal => {
-    const todayCompletion = goal.completions.find(c => c.date === today);
-    return todayCompletion && todayCompletion.count >= goal.targetCount;
-  }).length;
-
-  const todayProgress = totalGoals > 0 ? (todayCompleted / totalGoals) * 100 : 0;
+  // Calculate progress for today based on each goal's targetCount
+  const todayProgress = totalGoals > 0
+    ? (goals.reduce((acc, goal) => {
+        const todayCompletion = goal.completions.find(c => c.date === today);
+        return acc + (todayCompletion ? Math.min(1, todayCompletion.count / goal.targetCount) : 0);
+      }, 0) / totalGoals) * 100
+    : 0;
 
   // Calculate streak (consecutive days with all goals completed)
   const calculateStreak = () => {
@@ -80,7 +81,7 @@ export function Dashboard({ goals, onEditGoal, onDeleteGoal, onToggleCompletion,
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto text-center space-y-6">
           <div className="space-y-2">
-            <h1>Welcome to DoToday</h1>
+            <h1>Welcome to Do Today</h1>
             <p className="text-muted-foreground">
               Start your productivity journey by creating your first goal.
             </p>
@@ -118,7 +119,7 @@ export function Dashboard({ goals, onEditGoal, onDeleteGoal, onToggleCompletion,
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{todayCompleted}/{totalGoals}</div>
+            <div className="text-2xl font-bold">{Math.round(todayProgress)}%</div>
             <Progress value={todayProgress} className="mt-2" />
             <p className="text-xs text-muted-foreground mt-2">
               {Math.round(todayProgress)}% completed today
@@ -172,7 +173,7 @@ export function Dashboard({ goals, onEditGoal, onDeleteGoal, onToggleCompletion,
           <h2>Your Goals</h2>
           <div className="flex items-center gap-2">
             <Badge variant="secondary">{goals.length} total</Badge>
-            <Badge variant="outline">{todayCompleted} completed today</Badge>
+            <Badge variant="outline">{Math.round(todayProgress)}% of today's targets</Badge>
           </div>
         </div>
         

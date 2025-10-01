@@ -32,7 +32,7 @@ export function Header({ user, onLogin, onLogout, onNewGoal, darkMode, onToggleD
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
             <Target className="size-6" />
-            <span className="font-semibold">DoToday</span>
+            <span className="font-semibold">Do Today</span>
           </div>
           
           {user && (
@@ -75,7 +75,7 @@ export function Header({ user, onLogin, onLogout, onNewGoal, darkMode, onToggleD
                   <SheetHeader>
                     <SheetTitle className="flex items-center gap-2">
                       <Target className="size-6" />
-                      DoToday
+                      Do Today
                     </SheetTitle>
                     <SheetDescription>
                       Navigate to different sections of the app

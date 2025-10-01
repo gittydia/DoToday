@@ -8,18 +8,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 interface AuthModalProps {
   open: boolean;
   onClose: () => void;
-  onLogin: (email: string, password: string) => void;
+  onLogin: (username: string, password: string) => void;
   onRegister: (name: string, email: string, password: string) => void;
 }
 
 export function AuthModal({ open, onClose, onLogin, onRegister }: AuthModalProps) {
-  const [loginForm, setLoginForm] = useState({ email: "", password: "" });
+  const [loginForm, setLoginForm] = useState({ username: "", password: "" });
   const [registerForm, setRegisterForm] = useState({ name: "", email: "", password: "" });
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin(loginForm.email, loginForm.password);
-    setLoginForm({ email: "", password: "" });
+    onLogin(loginForm.username, loginForm.password);
+    setLoginForm({ username: "", password: "" });
   };
 
   const handleRegister = (e: React.FormEvent) => {
@@ -32,7 +32,7 @@ export function AuthModal({ open, onClose, onLogin, onRegister }: AuthModalProps
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Welcome to DoToday</DialogTitle>
+          <DialogTitle>Welcome to Do Today</DialogTitle>
           <DialogDescription>
             Sign in to your account or create a new one to start tracking your goals.
           </DialogDescription>
@@ -47,13 +47,13 @@ export function AuthModal({ open, onClose, onLogin, onRegister }: AuthModalProps
           <TabsContent value="login" className="space-y-4">
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="login-email">Email</Label>
+                <Label htmlFor="login-username">Username</Label>
                 <Input
-                  id="login-email"
-                  type="email"
-                  placeholder="your@email.com"
-                  value={loginForm.email}
-                  onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
+                  id="login-username"
+                  type="text"
+                  placeholder="your username"
+                  value={loginForm.username}
+                  onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
                   required
                 />
               </div>
@@ -76,11 +76,11 @@ export function AuthModal({ open, onClose, onLogin, onRegister }: AuthModalProps
           <TabsContent value="register" className="space-y-4">
             <form onSubmit={handleRegister} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="register-name">Full Name</Label>
+                <Label htmlFor="register-name">Username</Label>
                 <Input
                   id="register-name"
                   type="text"
-                  placeholder="John Doe"
+                  placeholder="Your username"
                   value={registerForm.name}
                   onChange={(e) => setRegisterForm({ ...registerForm, name: e.target.value })}
                   required

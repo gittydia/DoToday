@@ -335,6 +335,34 @@ export function Analytics({ goals }: AnalyticsProps) {
     };
   }, [goals]);
 
+  // Add this useMemo to calculate yearly data, after your other useMemos
+  const yearlyData = useMemo(() => {
+    const years: { year: number; completions: number; possible: number; rate: number }[] = [];
+    const now = new Date();
+    for (let i = 2; i >= 0; i--) {
+      const year = now.getFullYear() - i;
+      let completions = 0;
+      let possible = 0;
+      goals.forEach(goal => {
+        goal.completions.forEach(completion => {
+          const compYear = new Date(completion.date).getFullYear();
+          if (compYear === year && completion.count >= goal.targetCount) {
+            completions++;
+          }
+        });
+        // Assume possible completions = 365 per goal per year (or adjust as needed)
+        possible += 365;
+      });
+      years.push({
+        year,
+        completions,
+        possible,
+        rate: possible > 0 ? Math.round((completions / possible) * 100) : 0,
+      });
+    }
+    return years;
+  }, [goals]);
+
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
       {/* Header */}
@@ -647,6 +675,37 @@ export function Analytics({ goals }: AnalyticsProps) {
               />
             </AreaChart>
           </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Yearly Completion Rate */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Yearly Completion Rate</CardTitle>
+          <CardDescription>
+            Your goal completion rate for each year
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={yearlyData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="year" />
+              <YAxis domain={[0, 100]} />
+              <Tooltip 
+                formatter={(value: number) => [`${value}%`, 'Completion Rate']}
+                labelFormatter={(label) => `Year: ${label}`}
+              />
+              <Bar dataKey="rate" fill="#8884d8" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
+            {yearlyData.map((y) => (
+              <div key={y.year}>
+                <span className="font-semibold">{y.year}:</span> {y.rate}% ({y.completions}/{y.possible})
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
     </div>
