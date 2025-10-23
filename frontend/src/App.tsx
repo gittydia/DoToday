@@ -113,15 +113,28 @@ export default function App() {
     if (!user || !user.token) return;
     try {
       if (editingGoal) {
+        // For updates, optimistically update the specific goal
+        setGoals(prevGoals => 
+          prevGoals.map(goal => 
+            goal.id === editingGoal.id 
+              ? { ...goal, ...goalData }
+              : goal
+          )
+        );
         await api.updateGoal(editingGoal.id, goalData, user.token);
       } else {
+        // For new goals, we need to refetch to get the ID from backend
         await api.createGoal(goalData, user.token);
+        await fetchGoals(user.token);
       }
-      await fetchGoals(user.token);
       setEditingGoal(null);
       setShowGoalForm(false);
     } catch (err) {
       alert('Failed to save goal');
+      // Revert optimistic update for edits
+      if (editingGoal) {
+        await fetchGoals(user.token);
+      }
     }
   };
 
@@ -132,21 +145,58 @@ export default function App() {
 
   const handleDeleteGoal = async (goalId: string) => {
     if (!user || !user.token) return;
+    
+    // Optimistic update - remove goal immediately
+    const goalToDelete = goals.find(g => g.id === goalId);
+    setGoals(prevGoals => prevGoals.filter(g => g.id !== goalId));
+    
     try {
       await api.deleteGoal(goalId, user.token);
-      await fetchGoals(user.token);
     } catch (err) {
       alert('Failed to delete goal');
+      // Revert optimistic update
+      if (goalToDelete) {
+        setGoals(prevGoals => [...prevGoals, goalToDelete]);
+      }
     }
   };
 
   const handleToggleCompletion = async (goalId: string, date: string) => {
     if (!user || !user.token) return;
+    
+    // Optimistic update - update UI immediately
+    const today = new Date().toISOString().split('T')[0];
+    setGoals(prevGoals => 
+      prevGoals.map(goal => {
+        if (goal.id === goalId) {
+          const existingCompletion = goal.completions.find(c => c.date === today);
+          if (existingCompletion) {
+            // Increment existing completion
+            return {
+              ...goal,
+              completions: goal.completions.map(c => 
+                c.date === today ? { ...c, count: c.count + 1 } : c
+              )
+            };
+          } else {
+            // Add new completion
+            return {
+              ...goal,
+              completions: [...goal.completions, { date: today, count: 1 }]
+            };
+          }
+        }
+        return goal;
+      })
+    );
+    
     try {
       await api.completeGoal(goalId, user.token);
-      await fetchGoals(user.token);
+      // Only refetch on error to sync with backend
     } catch (err) {
       alert('Failed to complete goal');
+      // Revert optimistic update by refetching
+      await fetchGoals(user.token);
     }
   };
 
