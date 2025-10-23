@@ -24,3 +24,7 @@ func (s *FeedService) GetFeedByID(id string) (*models.Feed, error) {
 func (s *FeedService) GetFeedsByGoalID(goalID string) ([]*models.Feed, error) {
 	return s.repo.GetByGoalID(goalID)
 }
+
+func (s *FeedService) GetAllFeeds() ([]*models.Feed, error) {
+	return s.repo.GetAll()
+}
