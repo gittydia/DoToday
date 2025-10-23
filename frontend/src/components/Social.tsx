@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import type { Goal } from "./GoalCard";
 import { Users, Share2, Heart, MessageCircle, Trophy, Target, Calendar, TrendingUp, Plus } from "lucide-react";
 import { toast } from "sonner";
+// @ts-ignore - plain JS api module
+import { createFeed, getAllFeeds } from "../lib/api";
 
 interface User {
   name: string;
@@ -41,62 +43,41 @@ interface SocialProps {
 }
 
 export function Social({ user, goals, onViewProfile }: SocialProps) {
-  const [posts, setPosts] = useState<Post[]>([
-    {
-      id: '1',
-      userId: 'user1',
-      userName: 'Alex Johnson',
-      userAvatar: 'https://api.dicebear.com/7.x/initials/svg?seed=AlexJohnson',
-      content: 'Just completed my 30-day meditation streak! 🧘‍♂️ Feeling more focused and calm than ever.',
-      goalTitle: 'Daily Meditation',
-      goalCategory: 'personal',
-      achievement: {
-        type: 'streak',
-        value: 30,
-        description: '30-day meditation streak'
-      },
-      createdAt: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-      likes: 12,
-      comments: 3,
-      isLiked: false
-    },
-    {
-      id: '2',
-      userId: 'user2',
-      userName: 'Sarah Chen',
-      userAvatar: 'https://api.dicebear.com/7.x/initials/svg?seed=SarahChen',
-      content: 'Reading milestone achieved! 📚 Just finished my 5th book this month. Currently reading "Atomic Habits" - highly recommend!',
-      goalTitle: 'Read for 30 minutes',
-      goalCategory: 'learning',
-      achievement: {
-        type: 'milestone',
-        value: 5,
-        description: '5 books completed this month'
-      },
-      createdAt: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
-      likes: 18,
-      comments: 5,
-      isLiked: true
-    },
-    {
-      id: '3',
-      userId: 'user3',
-      userName: 'Mike Rodriguez',
-      userAvatar: 'https://api.dicebear.com/7.x/initials/svg?seed=MikeRodriguez',
-      content: 'Crushed my fitness goal today! 💪 Hit the gym for an intense workout session. Consistency is key!',
-      goalTitle: 'Exercise',
-      goalCategory: 'health',
-      achievement: {
-        type: 'completion',
-        value: 1,
-        description: 'Daily exercise completed'
-      },
-      createdAt: new Date(Date.now() - 10800000).toISOString(), // 3 hours ago
-      likes: 8,
-      comments: 2,
-      isLiked: false
-    }
-  ]);
+  const [posts, setPosts] = useState<Post[]>([]);
+
+  // Load community feeds from backend on mount
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const stored = localStorage.getItem('user');
+      const parsed = stored ? JSON.parse(stored) : null;
+
+      try {
+        console.debug('Social: calling getAllFeeds()');
+        const feeds = await getAllFeeds();
+        console.debug('Social: getAllFeeds returned', feeds);
+        if (!mounted) return;
+        const mapped: Post[] = (feeds || []).map((f: any) => ({
+          id: f.id,
+          userId: f.user_id,
+          userName: f.user_name || (f.user_id === (parsed?.email || user.email) ? (parsed?.name || user.name) : 'Unknown'),
+          userAvatar: f.user_avatar || undefined,
+          content: f.description,
+          goalTitle: f.goal_title || undefined,
+          goalCategory: undefined,
+          createdAt: f.date,
+          likes: 0,
+          comments: 0,
+          isLiked: false
+        }));
+  console.debug('Social: mapped posts', mapped);
+  setPosts(mapped);
+      } catch (err) {
+        console.error('Failed to load feeds', err);
+      }
+    })();
+    return () => { mounted = false };
+  }, []);
 
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [shareContent, setShareContent] = useState('');
@@ -172,37 +153,60 @@ export function Social({ user, goals, onViewProfile }: SocialProps) {
     ));
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
     if (!shareContent.trim()) {
       toast.error("Please enter some content to share");
       return;
     }
 
-    const newPost: Post = {
-      id: Date.now().toString(),
-      userId: user.email,
-      userName: user.name,
-      userAvatar: user.avatar,
-      content: shareContent,
-      goalTitle: selectedGoal?.title,
-      goalCategory: selectedGoal?.category,
-      achievement: selectedGoal ? {
-        type: 'completion',
-        value: 1,
-        description: `Completed ${selectedGoal.title}`
-      } : undefined,
-      createdAt: new Date().toISOString(),
-      likes: 0,
-      comments: 0,
-      isLiked: false
-    };
+    const stored = localStorage.getItem('user');
+    const parsed = stored ? JSON.parse(stored) : null;
+    const token = (parsed && parsed.token) || (user as any).token;
 
-    setPosts([newPost, ...posts]);
-    setShareContent('');
-    setSelectedGoal(null);
-    setShowShareDialog(false);
-    toast.success("Goal shared successfully!");
+    if (!token) {
+      toast.error('You must be logged in to share to the community');
+      return;
+    }
+
+    const payload: any = {
+      description: shareContent,
+      date: new Date().toISOString(),
+    };
+    if (selectedGoal) payload.goal_id = selectedGoal.id;
+
+    try {
+      const createdResp = await createFeed(payload, token);
+      const created = createdResp && createdResp.feed ? createdResp.feed : createdResp;
+      const post: Post = {
+        id: (created && created.id) || Date.now().toString(),
+        userId: (created && (created.user_id || created.userId)) || parsed?.email || user.email,
+        userName: (created && (created.user_name || created.userName)) || parsed?.name || user.name,
+        userAvatar: (created && (created.user_avatar || created.userAvatar)) || parsed?.avatar || user.avatar,
+        content: (created && (created.description || created.content)) || shareContent,
+        goalTitle: (created && (created.goal_title || created.goalTitle)) || selectedGoal?.title,
+        goalCategory: selectedGoal?.category,
+        achievement: selectedGoal ? {
+          type: 'completion',
+          value: 1,
+          description: `Completed ${selectedGoal.title}`
+        } : undefined,
+        createdAt: (created && (created.date || created.createdAt)) || new Date().toISOString(),
+        likes: 0,
+        comments: 0,
+        isLiked: false
+      };
+
+      setPosts([post, ...posts]);
+      setShareContent('');
+      setSelectedGoal(null);
+      setShowShareDialog(false);
+      toast.success("Goal shared successfully!");
+    } catch (err) {
+      console.error('createFeed error', err);
+      toast.error('Failed to share to community');
+    }
   };
+  
 
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
@@ -246,13 +250,13 @@ export function Social({ user, goals, onViewProfile }: SocialProps) {
           </div>
         </div>
 
-        <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Share2 className="size-4" />
-              Share Progress
-            </Button>
-          </DialogTrigger>
+        <div>
+          <Button className="gap-2" onClick={() => setShowShareDialog(true)}>
+            <Share2 className="size-4" />
+            Share Progress
+          </Button>
+        
+          <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Share Your Progress</DialogTitle>
@@ -303,14 +307,14 @@ export function Social({ user, goals, onViewProfile }: SocialProps) {
           </DialogContent>
         </Dialog>
       </div>
+    </div>
 
-      {/* User Stats Card */}
       <Card className="mb-8">
         <CardHeader>
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
               <AvatarImage src={user.avatar} alt={user.name} />
-              <AvatarFallback className="text-lg">{user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                <AvatarFallback className="text-lg">{user.name ? user.name.slice(0, 2).toUpperCase() : 'UN'}</AvatarFallback>
             </Avatar>
             <div className="flex-1">
               <CardTitle className="text-xl">{user.name}</CardTitle>
@@ -340,7 +344,6 @@ export function Social({ user, goals, onViewProfile }: SocialProps) {
         </CardContent>
       </Card>
 
-      {/* Community Feed */}
       <div className="space-y-6">
         <h2 className="text-xl font-semibold">Community Feed</h2>
         
@@ -354,7 +357,7 @@ export function Social({ user, goals, onViewProfile }: SocialProps) {
                 <div className="flex items-start gap-4 mb-4">
                   <Avatar className="h-10 w-10 cursor-pointer" onClick={() => onViewProfile(post.userId)}>
                     <AvatarImage src={post.userAvatar} alt={post.userName} />
-                    <AvatarFallback>{post.userName.slice(0, 2).toUpperCase()}</AvatarFallback>
+                    <AvatarFallback>{post.userName ? post.userName.slice(0, 2).toUpperCase() : 'UN'}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
