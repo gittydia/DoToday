@@ -173,7 +173,40 @@ export async function createFeed(data, token) {
         },
         body: JSON.stringify(data)
     });
-    return res.json();
+    const text = await res.text();
+    if (!res.ok) {
+        // try parse error body for debugging
+        try {
+            const parsedErr = JSON.parse(text);
+            throw new Error(parsedErr.error || parsedErr.message || text);
+        } catch (e) {
+            throw new Error(text || `Feed creation failed with status ${res.status}`);
+        }
+    }
+    try {
+        const parsed = JSON.parse(text);
+        return parsed.feed || parsed;
+    } catch (err) {
+        return text;
+    }
+}
+
+// Get all community feeds
+export async function getAllFeeds() {
+    console.debug('getAllFeeds: requesting', `${API_BASE}/feeds`);
+    const res = await fetch(`${API_BASE}/feeds`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+    });
+    const text = await res.text();
+    console.debug('getAllFeeds: response status', res.status, 'body', text);
+    try {
+        return JSON.parse(text);
+    } catch (err) {
+        console.error('getAllFeeds: failed to parse JSON response', text);
+        // Return empty array as fallback
+        return [];
+    }
 }
 
 // Get feeds by goal
