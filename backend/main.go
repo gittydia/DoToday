@@ -53,6 +53,7 @@ func main() {
 
 	// Setup router
 	router := setupRouter(authHandler, goalHandler, userHandler, feedHandler, commentHandler, likeHandler)
+	printRoutes(router)
 	// Get port from environment or default to 8080
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -101,8 +102,10 @@ func setupRouter(
 		api.GET("/feed", goalHandler.GetPublicGoals)
 
 		// Public feed endpoints
+		api.GET("/feeds", feedHandler.GetAllFeeds)
 		api.GET("/feeds/:goal_id", feedHandler.GetFeedsByGoalID)
 		api.GET("/feed/:id", feedHandler.GetFeedByID)
+
 	}
 
 	// Protected routes
@@ -158,4 +161,11 @@ func setupRouter(
 	}
 
 	return router
+}
+
+// printRoutes logs all registered routes - helpful for debugging missing endpoints
+func printRoutes(router *gin.Engine) {
+	for _, r := range router.Routes() {
+		log.Printf("route: %s %s", r.Method, r.Path)
+	}
 }
