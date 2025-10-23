@@ -44,6 +44,10 @@ type Feed struct {
 	GoalID      string     `json:"goal_id" gorm:"not null"`
 	Date        *time.Time `json:"date"`
 	Description string     `json:"description" gorm:"not null"`
+	UserID      string     `json:"user_id" gorm:"index"`
+	UserName    string     `json:"user_name"`
+	UserAvatar  string     `json:"user_avatar"`
+	GoalTitle   string     `json:"goal_title"`
 }
 
 // comments
