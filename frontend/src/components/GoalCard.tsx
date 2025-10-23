@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -34,20 +34,24 @@ export function GoalCard({ goal, onEdit, onDelete, onToggleCompletion }: GoalCar
   const completedToday = todayCompletion ? todayCompletion.count >= goal.targetCount : false;
 
   // Calculate progress based on targetCount for each day
-  const last7Days = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    return date.toISOString().split('T')[0];
-  }).reverse();
+  const { progressPercentage, weekProgress } = useMemo(() => {
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      return date.toISOString().split('T')[0];
+    }).reverse();
 
-  // For each day, calculate the ratio of completions to targetCount (max 1 per day)
-  const weekProgress = last7Days.map(date => {
-    const completion = goal.completions.find(c => c.date === date);
-    return completion ? Math.min(1, completion.count / goal.targetCount) : 0;
-  });
+    // For each day, calculate the ratio of completions to targetCount (max 1 per day)
+    const weekProgress = last7Days.map(date => {
+      const completion = goal.completions.find(c => c.date === date);
+      return completion ? Math.min(1, completion.count / goal.targetCount) : 0;
+    });
 
-  // Progress is the sum of ratios over 7 days, as a percentage
-  const progressPercentage = (weekProgress.reduce((a, b) => a + b, 0) / 7) * 100;
+    // Progress is the sum of ratios over 7 days, as a percentage
+    const progressPercentage = (weekProgress.reduce((a, b) => a + b, 0) / 7) * 100;
+    
+    return { progressPercentage, weekProgress };
+  }, [goal.completions, goal.targetCount]);
 
   // Map frequency to label
   const frequencyLabel = {
@@ -142,11 +146,11 @@ export function GoalCard({ goal, onEdit, onDelete, onToggleCompletion }: GoalCar
           </div>
           <Progress value={progressPercentage} className="h-2" />
           <div className="flex gap-1 justify-between">
-            {weekProgress.map((completed, index) => (
+            {weekProgress.map((completed: number, index: number) => (
               <div
                 key={index}
                 className={`h-2 w-2 rounded-full ${
-                  completed ? 'bg-green-500' : 'bg-muted'
+                  completed > 0 ? 'bg-green-500' : 'bg-muted'
                 }`}
               />
             ))}
