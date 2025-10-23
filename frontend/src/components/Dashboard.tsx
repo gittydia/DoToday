@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { GoalCard, Goal } from "./GoalCard";
@@ -20,15 +20,17 @@ export function Dashboard({ goals, onEditGoal, onDeleteGoal, onToggleCompletion,
   // Calculate stats
   const totalGoals = goals.length;
   // Calculate progress for today based on each goal's targetCount
-  const todayProgress = totalGoals > 0
-    ? (goals.reduce((acc, goal) => {
-        const todayCompletion = goal.completions.find(c => c.date === today);
-        return acc + (todayCompletion ? Math.min(1, todayCompletion.count / goal.targetCount) : 0);
-      }, 0) / totalGoals) * 100
-    : 0;
+  const todayProgress = useMemo(() => {
+    return totalGoals > 0
+      ? (goals.reduce((acc, goal) => {
+          const todayCompletion = goal.completions.find(c => c.date === today);
+          return acc + (todayCompletion ? Math.min(1, todayCompletion.count / goal.targetCount) : 0);
+        }, 0) / totalGoals) * 100
+      : 0;
+  }, [goals, totalGoals, today]);
 
   // Calculate streak (consecutive days with all goals completed)
-  const calculateStreak = () => {
+  const currentStreak = useMemo(() => {
     if (totalGoals === 0) return 0;
     
     let streak = 0;
@@ -49,12 +51,10 @@ export function Dashboard({ goals, onEditGoal, onDeleteGoal, onToggleCompletion,
       }
     }
     return streak;
-  };
-
-  const currentStreak = calculateStreak();
+  }, [goals, totalGoals]);
 
   // Get this week's completion rate
-  const getWeeklyStats = () => {
+  const weeklyProgress = useMemo(() => {
     const last7Days = Array.from({ length: 7 }, (_, i) => {
       const date = new Date();
       date.setDate(date.getDate() - i);
@@ -72,9 +72,7 @@ export function Dashboard({ goals, onEditGoal, onDeleteGoal, onToggleCompletion,
     const totalCompleted = dailyCompletions.reduce((sum, count) => sum + count, 0);
     
     return totalPossible > 0 ? (totalCompleted / totalPossible) * 100 : 0;
-  };
-
-  const weeklyProgress = getWeeklyStats();
+  }, [goals, totalGoals]);
 
   if (goals.length === 0) {
     return (
